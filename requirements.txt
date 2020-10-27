@@ -2,3 +2,4 @@ numpy
 gym
 pandas
 matplotlib
+black
