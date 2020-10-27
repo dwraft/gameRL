@@ -36,6 +36,7 @@ class BlackjackHand:
     def __init__(self, blackjack_deck: BlackjackDeck):
         self.blackjack_deck: BlackjackDeck = blackjack_deck
         self.hand: List[int] = []
+        self._initial_draw()
 
     def draw_card(self):
         self.hand.append(self.blackjack_deck.draw_card())
@@ -48,7 +49,7 @@ class BlackjackHand:
         return 1 in self.hand and sum(self.hand) + 10 <= MAX_HAND_SUM
 
     def sum_hand(self) -> int:
-        if self.has_usable_ace:
+        if self.has_usable_ace():
             return sum(self.hand) + 10
         return sum(self.hand)
 
@@ -61,6 +62,12 @@ class BlackjackHand:
     def is_natural(self) -> bool:
         """The optimal blackjack hand, eq"""
         return sorted(self.hand) == [1, 10]
+
+    def __str__(self):
+        return f"Hand={self.hand}  Score={self.score()}"
+
+    def __repr__(self):
+        return f"Hand={self.hand}  Score={self.score()}"
 
 
 class BlackjackCustomEnv(gym.Env):
@@ -80,6 +87,9 @@ class BlackjackCustomEnv(gym.Env):
         self.natural_bonus = natural_bonus
         # start the first game
         self.reset()
+
+    def render(self) -> None:
+        print(f"Dealer State: {str(self.dealer)}\n Player State: {str(self.player)}")
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
