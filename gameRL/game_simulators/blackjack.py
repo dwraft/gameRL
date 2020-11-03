@@ -17,6 +17,8 @@ CARD_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10]
 MAX_HAND_SUM = 21
 DEALER_MAX = 17
 
+ALLOWED_DOUBLE_DOWN_SUMS = {0,10,11}
+
 
 class BlackjackDeck:
     def __init__(self, N_decks: int, with_replacement=False):
@@ -40,6 +42,13 @@ class BlackjackHand:
 
     def draw_card(self):
         self.hand.append(self.blackjack_deck.draw_card())
+
+    @property
+    def hand_size(self) -> int:
+        return len(self.hand)
+
+    def is_double_down_legal(self) -> bool:
+        return self.hand_size == 2 and self.score() in ALLOWED_DOUBLE_DOWN_SUMS
 
     def _initial_draw(self):
         for _ in range(2):
@@ -73,7 +82,7 @@ class BlackjackHand:
 class BlackjackCustomEnv(gym.Env):
     def __init__(self, N_decks, natural_bonus=True):
         # actions: either "hit" (keep playing) or "stand" (stop where you are)
-        self.action_space = spaces.Discrete(2)
+        self.action_space = spaces.Discrete(3)
 
         self.observation_space = spaces.Tuple(
             (spaces.Discrete(32), spaces.Discrete(11), spaces.Discrete(2))
@@ -126,6 +135,23 @@ class BlackjackCustomEnv(gym.Env):
 
         return done, reward
 
+    def _double_down(self):
+        """
+        Handles case where the player chooses to double down
+        If the double down is illegeal, just ignore it
+        """
+        # it is illegal to double down if you do not have a 9, 10
+
+        multiplier = 2
+        if not self.player.is_double_down_legal():
+            return False, 0
+        done, reward = self._hit()
+        # case where you went over
+        if done:
+            return done, multiplier * reward
+        _, reward = self._stick()
+        return True, multiplier * reward
+
     def _get_info(self) -> Dict:
         """Return debugging info, for now just empty dictionary"""
         return {}
@@ -134,10 +160,13 @@ class BlackjackCustomEnv(gym.Env):
         """Action must be in the set {0,1}"""
         assert self.action_space.contains(action)
         # player hits
+
+        if action == 0:
+            done, reward = self._stick()
         if action == 1:
             done, reward = self._hit()
-        else:
-            done, reward = self._stick()
+        if action == 2:
+            done, reward = self._double_down()
         return self._get_obs(), reward, done, {}
 
     def _get_obs(self):
