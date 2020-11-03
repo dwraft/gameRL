@@ -33,6 +33,9 @@ class BlackjackDeck:
             return self.deck[index]
         return self.deck.pop(index)
 
+    def is_empty(self) -> bool:
+        return not len(self.deck)
+
 
 class BlackjackHand:
     def __init__(self, blackjack_deck: BlackjackDeck):
@@ -84,9 +87,7 @@ class BlackjackCustomEnv(gym.Env):
         # actions: either "hit" (keep playing) or "stand" (stop where you are)
         self.action_space = spaces.Discrete(3)
 
-        self.observation_space = spaces.Tuple(
-            (spaces.Discrete(32), spaces.Discrete(11), spaces.Discrete(2))
-        )
+        self.observation_space = spaces.MultiDiscrete([32, 11, 2])
 
         self.N_decks = N_decks
         self.seed()
