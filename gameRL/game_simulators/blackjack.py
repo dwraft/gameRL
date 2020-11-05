@@ -159,6 +159,7 @@ class BlackjackCustomEnv(gym.Env):
         """Handles case where the player chooses to hit"""
         hand_done = False
         if self.observing:  # return early if player is observing
+            hand_done = True
             return hand_done, 0
 
         self.player.draw_card()

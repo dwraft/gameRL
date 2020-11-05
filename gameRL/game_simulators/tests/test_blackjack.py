@@ -52,11 +52,11 @@ class TestGameSimulator(unittest.TestCase):
         env.step(2)
         self.assertFalse(env.observing, "Player should not be observing")
 
-    def testReshuffled(self):
+    def testReshuffledTermination(self):
         env = BlackjackCustomEnv(1)
-        done = False
-        while not done:
-            obs, _, done, _ = env.step(3)
+        game_done = False
+        while not game_done:
+            obs, _, game_done, _ = env.step(3)
         self.assertTrue(env.reshuffled)
 
     def testJoin(self):
@@ -114,6 +114,24 @@ class TestGameSimulator(unittest.TestCase):
         self.assertNotEqual(env.dealer.hand, prev_dealer_hand)
         self.assertNotEqual(env.dummy.hand, prev_dummy_hand)
         self.assertNotEqual(env.player.hand, prev_player_hand)
+
+    def testObservingInvalidAction(self):
+        env = BlackjackCustomEnv(1)
+        env.step(2)
+        env.step(3)
+        prev_dealer_hand = env.dealer.hand[:]
+        prev_dummy_hand = env.dummy.hand[:]
+        expected_reward = 0
+        _, reward, _, _ = env.step(1)  # Player hits invalidly
+        self.assertNotEqual(env.dealer.hand, prev_dealer_hand)
+        self.assertNotEqual(env.dummy.hand, prev_dummy_hand)
+        self.assertEqual(reward, expected_reward)
+        prev_dealer_hand = env.dealer.hand[:]
+        prev_dummy_hand = env.dummy.hand[:]
+        _, reward, _, _ = env.step(0)  # Player sticks invalidly
+        self.assertEqual(reward, expected_reward)
+        self.assertNotEqual(env.dealer.hand, prev_dealer_hand)
+        self.assertNotEqual(env.dummy.hand, prev_dummy_hand)
 
 
 if __name__ == "__main__":
