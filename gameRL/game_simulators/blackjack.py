@@ -24,12 +24,13 @@ class BlackjackDeck:
         self.deck = CARD_VALUES.copy() * SUITS * N_decks
         self.with_replacement = with_replacement
         self.count = 0
+        self.N_decks = N_decks
 
     def draw_card(self) -> Tuple[int, bool]:
         """Draws and returns card from the deck"""
         reshuffled = False
         if len(self.deck) == 0:
-            self.deck = CARD_VALUES.copy() * SUITS * N_decks
+            self.deck = CARD_VALUES.copy() * SUITS * self.N_decks
             self.count = 0
             reshuffled = True
         index = np.random.randint(len(self.deck))
@@ -52,6 +53,9 @@ class BlackjackDeck:
 
     def get_count(self) -> Union[int, float]:
         return self.count
+
+    def is_empty(self) -> bool:
+        return not len(self.deck)
 
 
 class BlackjackHand:
@@ -100,7 +104,7 @@ class BlackjackHand:
 class BlackjackCustomEnv(gym.Env):
     def __init__(self, N_decks, natural_bonus=True):
         # actions: either "hit" (keep playing) or "stand" (stop where you are)
-        self.action_space = spaces.Discrete(2)
+        self.action_space = spaces.Discrete(4)
 
         # count observation depends on the card-counting system and number of decks
         # use the following defaults
@@ -121,10 +125,16 @@ class BlackjackCustomEnv(gym.Env):
 
         self.observing = True
 
+        self.reshuffled = False
+
         # Flag to payout 1.5 on a "natural" blackjack win, like casino rules
         # Ref: http://www.bicyclecards.com/how-to-play/blackjack/
         self.natural_bonus = natural_bonus
         # start the first game
+        self.blackjack_deck: BlackjackDeck = BlackjackDeck(self.N_decks)
+        self.player = None
+        self.dealer = None
+        self.dummy = None
         self.reset()
 
     def render(self) -> None:
@@ -147,48 +157,56 @@ class BlackjackCustomEnv(gym.Env):
 
     def _hit(self):
         """Handles case where the player chooses to hit"""
-        if self.observing:  # penalize if player is observing
-            return False, -1000
+        hand_done = False
+        if self.observing:  # return early if player is observing
+            return hand_done, 0
 
         self.player.draw_card()
-        if self.player.is_bust():
-            done = False
+        if self.player.reshuffled:  # Deck ran out of cards
+            self.reshuffled = True
+            hand_done = True
+            reward = 0
+        elif self.player.is_bust():
+            hand_done = False
             reward = -1
-        elif self.player.reshuffled:  # Deck ran out of cards
-            done = True
-            reward = 0
         else:
-            done = False
+            hand_done = False
             reward = 0
-        return done, reward
+        return hand_done, reward
 
     def _stick(self):
         """Handles case where the player chooses to stick"""
-        if self.observing:  # penalize if player is observing
-            return False, -1000
+        hand_done = True
+        if self.observing:  # return early if player is observing
+            return hand_done, 0
 
-        done = False
-        while self.dealer.sum_hand() < DEALER_MAX and not self.dealer.reshuffled:
+        while self.dealer.sum_hand() < DEALER_MAX:
             self.dealer.draw_card()
-
-        if self.dealer.reshuffled:  # Return early if run out of cards
-            return True, 0
+            if self.dealer.reshuffled:  # Return early if run out of cards
+                self.reshuffled = True
+                return hand_done, 0
 
         reward = self._calculate_player_reward()
         if self.natural_bonus and self.player.is_natural() and reward == 1:
             reward = 1.5
 
-        return done, reward
+        return hand_done, reward
 
     def _dummy_stick(self):
-        done = False
-        while self.dealer.sum_hand() < DEALER_MAX and not self.dealer.reshuffled:
+        hand_done = True
+        while self.dealer.sum_hand() < DEALER_MAX:
             self.dealer.draw_card()
+            if self.dealer.reshuffled:  # Return early if run out of cards
+                self.reshuffled = True
+                return hand_done, 0
 
-        if self.dealer.reshuffled:  # Return early if run out of cards
-            done = True
+        reward = 0
+        if self.player:  # if player switches to observing, assume he sticks
+            reward = self._calculate_player_reward()
+            if self.natural_bonus and self.player.is_natural() and reward == 1:
+                reward = 1.5
 
-        return done, 0
+        return hand_done, reward
 
     def _get_info(self) -> Dict:
         """Return debugging info, for now just empty dictionary"""
@@ -198,20 +216,28 @@ class BlackjackCustomEnv(gym.Env):
         """Action must be in the set {0,1,2,3}"""
         assert self.action_space.contains(action)
         # player hits
+        game_done = False
         if action == 1:
-            done, reward = self._hit()
+            hand_done, reward = self._hit()
         elif action == 0:  # player sticks
-            done, reward = self._stick()
+            hand_done, reward = self._stick()
         elif action == 2:  # player joins
             self.observing = False
-            self.player = BlackjackHand(self.blackjack_deck)
-            done = self.player.reshuffled
+            hand_done = True
             reward = 0
         else:  # player observes
             self.observing = True
-            done, reward = self._dummy_stick()
+            hand_done, reward = self._dummy_stick()
 
-        return self._get_obs(), reward, done, {}
+        if hand_done:  # draw new cards
+            self.reset()  # draw dealer and dummy
+
+        if self.dealer.reshuffled or self.dummy.reshuffled:
+            self.reshuffled = True
+
+        game_done = game_done or self.reshuffled
+
+        return self._get_obs(), reward, game_done, {}
 
     def _get_obs(self):
         if self.observing:
@@ -232,8 +258,11 @@ class BlackjackCustomEnv(gym.Env):
             )
 
     def reset(self):
-        self.blackjack_deck: BlackjackDeck = BlackjackDeck(self.N_decks)
+        # self.blackjack_deck: BlackjackDeck = BlackjackDeck(self.N_decks)
         self.dealer = BlackjackHand(self.blackjack_deck)
         self.dummy = BlackjackHand(self.blackjack_deck)
-        # self.player = BlackjackHand(self.blackjack_deck)
+        if not self.observing:
+            self.player = BlackjackHand(self.blackjack_deck)
+        else:
+            self.player = None
         return self._get_obs()
