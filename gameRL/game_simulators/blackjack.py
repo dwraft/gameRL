@@ -42,6 +42,7 @@ class BlackjackHand:
         self.blackjack_deck: BlackjackDeck = blackjack_deck
         self.hand: List[int] = []
         self._initial_draw()
+        self.is_split = False
 
     def draw_card(self):
         self.hand.append(self.blackjack_deck.draw_card())
@@ -52,6 +53,12 @@ class BlackjackHand:
 
     def is_double_down_legal(self) -> bool:
         return self.hand_size == 2 and self.score() in ALLOWED_DOUBLE_DOWN_SUMS
+
+    def is_split_legal(self) -> bool:
+        return not self.is_split and self.hand_size == 2 and self.hand[0] == self.hand[1]
+
+    def split(self) -> None:
+        self.hand = self.hand[:1]
 
     def _initial_draw(self):
         for _ in range(2):
@@ -97,6 +104,7 @@ class BlackjackCustomEnv(gym.Env):
         self.natural_bonus = natural_bonus
         # start the first game
         self.reset()
+        self.split_card = None
 
     def render(self) -> None:
         print(f"Dealer State: {str(self.dealer)}\n Player State: {str(self.player)}")
@@ -153,6 +161,16 @@ class BlackjackCustomEnv(gym.Env):
         _, reward = self._stick()
         return True, multiplier * reward
 
+    def _split(self):
+        """
+        Handles case where the player chooses to split
+        If the split is illegal, just ignore it
+        """
+        if not self.player.is_split_legal():
+            return False, 0
+        self.player.split()
+        self.split_card = self.player.hand[0]
+
     def _get_info(self) -> Dict:
         """Return debugging info, for now just empty dictionary"""
         return {}
@@ -168,6 +186,8 @@ class BlackjackCustomEnv(gym.Env):
             done, reward = self._hit()
         if action == 2:
             done, reward = self._double_down()
+        if action == 3:
+            done, reward = self._split()
         return self._get_obs(), reward, done, {}
 
     def _get_obs(self):
@@ -181,4 +201,6 @@ class BlackjackCustomEnv(gym.Env):
         self.blackjack_deck: BlackjackDeck = BlackjackDeck(self.N_decks)
         self.dealer = BlackjackHand(self.blackjack_deck)
         self.player = BlackjackHand(self.blackjack_deck)
+        if self.split_card:
+            self.player.hand = [self.split_card]
         return self._get_obs()
