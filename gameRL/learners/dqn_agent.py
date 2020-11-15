@@ -11,12 +11,7 @@ import torch.optim as optim
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 
-from agents.base import Learner
-from agents.belief_agent import BeliefBasedAgent
-from agents.utils.game_runner import GameRunner
-from environments.test_hearts import TestSimpleHearts
-from environments.trick_taking_game import TrickTakingGame
-from evaluators import evaluate_random
+from gameRL.learners.base import Agent, Learner
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -48,7 +43,7 @@ class DQN(nn.Module):
         return self.fc5(x)
 
 
-class DQNAgent(BeliefBasedAgent):
+class DQNAgent(Agent):
     """
     DQN agent
 
@@ -56,7 +51,7 @@ class DQNAgent(BeliefBasedAgent):
     game. The vector has a one if the card is present in the set and 0 otherwise
     """
 
-    def __init__(self, game: TrickTakingGame, player_number: int, model: DQN):
+    def __init__(self, player_number: int, model: DQN, game):
         super().__init__(game, player_number)
         self._current_observation = None
         self.model = model
@@ -82,15 +77,29 @@ def calculate_action_observation_size(game):
     num_cards = constant_game.num_cards
     return num_cards, num_cards * 2
 
+# TODO: fill in blackjack code
+class GameRunner:
+    def __init__(self, task, agent_type, agent_params, game_params):
+        self.agent_type = agent_type
+        self.task = task
+        self.agent_params = agent_params
+        self.game_params = game_params
+
+    def __call__(self, game_num):
+        # print(f"Running game {game_num}")
+        game = Game(self.task, [self.agent_type] * 4, self.agent_params, self.game_params)
+        result = game.run()
+        barbs = game.get_barbs()
+        return barbs
 
 class DQNLearner(Learner):
 
     def __init__(self, resume_state=None):
         super().__init__(threading=True)  # TODO: support no threading
-        self.action_size, self.observation_size = calculate_action_observation_size(
-            TestSimpleHearts)
+        self.action_size, self.observation_size = calculate_action_observation_size() # TODO: get from blackjack
         """ + len(
             constant_game.cards_per_suit) + constant_game.num_players"""
+        # TODO: bump up length of experience replay buffer
         self.memory = deque(maxlen=4000)  # modification to dqn to preserve recent only
         self.gamma = 0.1  # discount rate
         self.epsilon = 1.0  # exploration rate, percent time to be epsilon greedy
@@ -118,45 +127,45 @@ class DQNLearner(Learner):
         self.writer = SummaryWriter(f"runs/dqn {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
         # TODO: add network graph to tensborboard
 
-    def train(self, tasks: List[TrickTakingGame.__class__]) -> nn.Module:
-        for task in tasks:
-            for epoch in range(self.num_epochs):
-                # collect experiences
-                print(f"Starting epoch {epoch}/{self.num_epochs}")
-                specific_game_func = GameRunner(task, DQNAgent,
-                                                [{"model": self.model} for _ in
-                                                 range(4)], {"epsilon": self.epsilon,
-                                                             "verbose": False})
-                barb_futures = self.executor.map(specific_game_func, range(self.games_per_epoch),
-                                                 chunksize=2)
-                # wait for completion
-                barbs = list(barb_futures)
-                barbs = list(itertools.chain.from_iterable(barbs))
-                self.memorize(barbs)
-                # update policy
-                losses = []
-                for _ in range(self.num_batches):
-                    loss = self.replay(self.batch_size).item()
-                    losses.append(loss)
+    def train(self):
+        for epoch in range(self.num_epochs):
+            # collect experiences
+            print(f"Starting epoch {epoch}/{self.num_epochs}")
+            specific_game_func = GameRunner(task, DQNAgent,
+                                            [{"model": self.model} for _ in
+                                             range(4)], {"epsilon": self.epsilon,
+                                                         "verbose": False})
+            barb_futures = self.executor.map(specific_game_func, range(self.games_per_epoch),
+                                             chunksize=2)
+            # wait for completion
+            barbs = list(barb_futures)
+            barbs = list(itertools.chain.from_iterable(barbs))
+            self.memorize(barbs)
+            # update policy
+            losses = []
+            for _ in range(self.num_batches):
+                loss = self.replay(self.batch_size).item()
+                losses.append(loss)
 
-                self.writer.add_scalar("avg_training_loss", np.mean(losses), epoch)
+            self.writer.add_scalar("avg_training_loss", np.mean(losses), epoch)
 
-                # evaluate
-                if (epoch + 1) % self.evaluate_every == 0:
-                    winrate, avg_score, invalid_percent, scores = evaluate_random(DQNAgent,
-                                                                                  self.model,
-                                                                                  num_trials=25)
-                    self.writer.add_scalar("eval_winrate", winrate, epoch)
-                    self.writer.add_scalar("eval_score", avg_score, epoch)
-                    self.writer.add_scalar("invalid_percentage", invalid_percent, epoch)
+            # evaluate
+            if (epoch + 1) % self.evaluate_every == 0:
+                # TODO: add evaluator
+                winrate, avg_score, invalid_percent, scores = evaluate_random(DQNAgent,
+                                                                              self.model,
+                                                                              num_trials=25)
+                self.writer.add_scalar("eval_winrate", winrate, epoch)
+                self.writer.add_scalar("eval_score", avg_score, epoch)
+                self.writer.add_scalar("invalid_percentage", invalid_percent, epoch)
 
-                if self.epsilon > self.epsilon_min:
-                    self.epsilon *= self.epsilon_decay
-                    self.writer.add_scalar("epsilon", self.epsilon, epoch)
+            if self.epsilon > self.epsilon_min:
+                self.epsilon *= self.epsilon_decay
+                self.writer.add_scalar("epsilon", self.epsilon, epoch)
 
-                if (epoch + 1) % self.save_every == 0:
-                    # save model
-                    torch.save(self.model.state_dict(), f"{self.save_base_path}_{epoch}.pt")
+            if (epoch + 1) % self.save_every == 0:
+                # save model
+                torch.save(self.model.state_dict(), f"{self.save_base_path}_{epoch}.pt")
 
         return self.model
 
