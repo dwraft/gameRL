@@ -110,15 +110,8 @@ class BlackjackCustomEnv(gym.Env):
         # use the following defaults
         # Hi-Lo: [-20 * N_decks, 20 * N_decks], (2*20 + 1) * N_decks
         count_space = (2 * 20 + 1) * N_decks
-        self.observation_space = spaces.Tuple(
-            (
-                spaces.Discrete(33),  # 32 + 1 for observing hand sum of 0
-                spaces.Discrete(11),
-                spaces.Discrete(2),
-                spaces.Discrete(count_space),
-                spaces.Discrete(2),  # observing or not
-            )
-        )
+        self.observation_space = spaces.MultiDiscrete(
+            [33, 11, 2, count_space, 2])  # last for observing or not
 
         self.N_decks = N_decks
         self.seed()
