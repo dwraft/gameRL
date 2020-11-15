@@ -1,10 +1,15 @@
 import unittest
-from gameRL.game_simulators.blackjack import BlackjackDeck, BlackjackCustomEnv
+from gameRL.game_simulators.blackjack import (
+    BlackjackDeck,
+    BlackjackCustomEnv,
+    BlackjackDeckwithCount,
+    BlackjackEnvwithCount,
+)
 
 
 class TestGameSimulator(unittest.TestCase):
     def test_rand_game(self):
-        env = BlackjackCustomEnv(3, natural_bonus=True)
+        env = BlackjackEnvwithCount(3, natural_bonus=True)
         obs = env.reset()
         env.step(2)  # player joins game
         done = False
@@ -14,8 +19,8 @@ class TestGameSimulator(unittest.TestCase):
             # env.render()
 
     def testBlackjackDeckCountingHiLo(self):
-        deck1 = BlackjackDeck(N_decks=1)
-        deck3 = BlackjackDeck(N_decks=3)
+        deck1 = BlackjackDeckwithCount(N_decks=1)
+        deck3 = BlackjackDeckwithCount(N_decks=3)
         num_cards = 10
         for _ in range(num_cards):
             expected = deck1.get_count()
@@ -41,26 +46,26 @@ class TestGameSimulator(unittest.TestCase):
             self.assertEqual(actual, expected, "Multiple Deck Counting Failed")
 
     def testReset(self):
-        env = BlackjackCustomEnv(1)
+        env = BlackjackEnvwithCount(1)
         env.reset()
         self.assertEqual(len(env.dealer.hand), 2, "Incorrect Dealer Hand")
         self.assertEqual(len(env.dummy.hand), 2, "Incorrect Dummy Hand")
 
     def testObserve(self):
-        env = BlackjackCustomEnv(1)
+        env = BlackjackEnvwithCount(1)
         self.assertTrue(env.observing, "Default stating state is observing")
         env.step(2)
         self.assertFalse(env.observing, "Player should not be observing")
 
     def testReshuffledTermination(self):
-        env = BlackjackCustomEnv(1)
+        env = BlackjackEnvwithCount(1)
         game_done = False
         while not game_done:
             obs, _, game_done, _ = env.step(3)
         self.assertTrue(env.reshuffled)
 
     def testJoin(self):
-        env = BlackjackCustomEnv(1)
+        env = BlackjackEnvwithCount(1)
         env.step(3)  # Player stays observing
         prev_dealer = env.dealer.hand[:]
         prev_dummy = env.dummy.hand[:]
@@ -71,7 +76,7 @@ class TestGameSimulator(unittest.TestCase):
         self.assertEqual(len(env.player.hand), expected_hand_length)
 
     def testLeave(self):
-        env = BlackjackCustomEnv(1)
+        env = BlackjackEnvwithCount(1)
         env.step(2)  # Player joins
         expected_hand_length = 2
         prev_player_hand = env.player.hand[:]
@@ -86,7 +91,7 @@ class TestGameSimulator(unittest.TestCase):
         self.assertIsNone(env.player)
 
     def testJoinandHit(self):
-        env = BlackjackCustomEnv(1)
+        env = BlackjackEnvwithCount(1)
         env.step(2)  # Player joins
         expected_hand_length = 2
         prev_player_hand = env.player.hand[:]
@@ -101,7 +106,7 @@ class TestGameSimulator(unittest.TestCase):
         self.assertNotEqual(env.player.hand, prev_player_hand)
 
     def testJoinandStick(self):
-        env = BlackjackCustomEnv(1)
+        env = BlackjackEnvwithCount(1)
         env.step(2)  # Player joins
         expected_hand_length = 2
         prev_player_hand = env.player.hand[:]
@@ -116,7 +121,7 @@ class TestGameSimulator(unittest.TestCase):
         self.assertNotEqual(env.player.hand, prev_player_hand)
 
     def testObservingInvalidAction(self):
-        env = BlackjackCustomEnv(1)
+        env = BlackjackEnvwithCount(1)
         env.step(2)
         env.step(3)
         prev_dealer_hand = env.dealer.hand[:]
