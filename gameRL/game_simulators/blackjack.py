@@ -53,7 +53,7 @@ class BlackjackDeckwithCount(BlackjackDeck):
             return self.deck[index], reshuffled
         return self.deck.pop(index), reshuffled
 
-    def update_count(self, card, system="Hi-Lo") -> Union[int, float]:
+    def update_count(self, card, system="Hi-Lo") -> Tuple[int, float]:
         """
         Computes various card-counting systems including: Hi-Lo
         """
@@ -65,7 +65,7 @@ class BlackjackDeckwithCount(BlackjackDeck):
             else:
                 return -1
 
-    def get_count(self) -> Union[int, float]:
+    def get_count(self) -> Tuple[int, float]:
         return self.count
 
 
@@ -152,7 +152,7 @@ class BlackjackCustomEnv(gym.Env):
         dealer_sum = self.dealer.score()
         return (player_sum > dealer_sum) - (dealer_sum > player_sum)
 
-    def _hit(self) -> Union[bool, int]:
+    def _hit(self) -> Tuple[bool, int]:
         """Handles case where the player chooses to hit"""
         self.player.draw_card()
         if self.player.is_bust():
@@ -163,7 +163,7 @@ class BlackjackCustomEnv(gym.Env):
             reward = 0
         return done, reward
 
-    def _stick(self) -> Union[bool, int]:
+    def _stick(self) -> Tuple[bool, int]:
         """Handles case where the player chooses to stick"""
         done = True
         while self.dealer.sum_hand() < DEALER_MAX:
@@ -178,7 +178,7 @@ class BlackjackCustomEnv(gym.Env):
         """Return debugging info, for now just empty dictionary"""
         return {}
 
-    def step(self, action) -> Union[Tuple, int, bool, dict]:
+    def step(self, action) -> Tuple[Tuple, int, bool, dict]:
         """Action must be in the set {0,1}"""
         assert self.action_space.contains(action)
         # player hits
@@ -188,14 +188,14 @@ class BlackjackCustomEnv(gym.Env):
             done, reward = self._stick()
         return self._get_obs(), reward, done, {}
 
-    def _get_obs(self) -> Union[int, int, bool]:
+    def _get_obs(self) -> Tuple[int, int, bool]:
         return (
             self.player.sum_hand(),
             self.dealer.hand[0],
             self.player.has_usable_ace(),
         )
 
-    def reset(self) -> Union[int, int, bool]:
+    def reset(self) -> Tuple[int, int, bool]:
         self.blackjack_deck: BlackjackDeck = BlackjackDeck(self.N_decks)
         self.dealer = BlackjackHand(self.blackjack_deck)
         self.player = BlackjackHand(self.blackjack_deck)
@@ -238,7 +238,7 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
         dealer_sum = self.dealer.score()
         return (player_sum > dealer_sum) - (dealer_sum > player_sum)
 
-    def _hit(self) -> Union[bool, int]:
+    def _hit(self) -> Tuple[bool, int]:
         """Handles case where the player chooses to hit"""
         hand_done = False
         if self.observing:  # return early if player is observing
@@ -258,7 +258,7 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
             reward = 0
         return hand_done, reward
 
-    def _stick(self) -> Union[bool, int]:
+    def _stick(self) -> Tuple[bool, int]:
         """Handles case where the player chooses to stick"""
         hand_done = True
         if self.observing:  # return early if player is observing
@@ -276,7 +276,7 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
 
         return hand_done, reward
 
-    def _dummy_stick(self) -> Union[bool, int]:
+    def _dummy_stick(self) -> Tuple[bool, int]:
         hand_done = True
         while self.dealer.sum_hand() < DEALER_MAX:
             self.dealer.draw_card()
@@ -284,15 +284,17 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
                 self.reshuffled = True
                 return hand_done, 0
 
-        reward = 0
-        if self.player:  # if player switches to observing, assume he sticks
+        reward = 0  # If the player is not in the game, they should receive no reward
+        if (
+            self.player
+        ):  # if player is in a hand switches to observing, assume he sticks
             reward = self._calculate_player_reward()
             if self.natural_bonus and self.player.is_natural() and reward == 1:
                 reward = 1.5
 
         return hand_done, reward
 
-    def step(self, action) -> Union[Tuple, int, bool, dict]:
+    def step(self, action) -> Tuple[Tuple, int, bool, dict]:
         """Action must be in the set {0,1,2,3}"""
         assert self.action_space.contains(action)
         # player hits
@@ -319,7 +321,7 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
 
         return self._get_obs(), reward, game_done, {}
 
-    def _get_obs(self) -> Union[int, int, bool]:
+    def _get_obs(self) -> Tuple[int, int, bool]:
         if self.observing:
             return (
                 0,
@@ -337,7 +339,7 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
                 self.observing,
             )
 
-    def reset(self) -> Union[int, int, bool]:
+    def reset(self) -> Tuple[int, int, bool]:
         if not hasattr(self, "blackjack_deck"):
             return None
         self.dealer = BlackjackHandwithReshuffle(self.blackjack_deck)
