@@ -23,7 +23,7 @@ class TestGameSimulator(unittest.TestCase):
         deck3 = BlackjackDeckwithCount(N_decks=3)
         num_cards = 10
         for _ in range(num_cards):
-            expected = deck1.get_count()
+            expected = deck1.get_running_count()
             card1, reshuffled = deck1.draw_card()
             if card1 in [2, 3, 4, 5, 6]:
                 expected += 1
@@ -31,10 +31,10 @@ class TestGameSimulator(unittest.TestCase):
                 expected += 0
             else:
                 expected += -1
-            actual = deck1.get_count()
+            actual = deck1.get_running_count()
             self.assertEqual(actual, expected, "Single Deck Counting Failed")
         for _ in range(num_cards):
-            expected = deck3.get_count()
+            expected = deck3.get_running_count()
             card3, reshuffle = deck3.draw_card()
             if card3 in [2, 3, 4, 5, 6]:
                 expected += 1
@@ -42,7 +42,7 @@ class TestGameSimulator(unittest.TestCase):
                 expected += 0
             else:
                 expected += -1
-            actual = deck3.get_count()
+            actual = deck3.get_running_count()
             self.assertEqual(actual, expected, "Multiple Deck Counting Failed")
 
     def testReset(self):
@@ -51,11 +51,30 @@ class TestGameSimulator(unittest.TestCase):
         self.assertEqual(len(env.dealer.hand), 2, "Incorrect Dealer Hand")
         self.assertEqual(len(env.dummy.hand), 2, "Incorrect Dummy Hand")
 
+    def testRedealObserving(self):
+        env = BlackjackEnvwithCount(1)
+        prev_dealer = env.dealer.hand.copy()
+        prev_dummy = env.dummy.hand.copy()
+        env.redeal()
+        self.assertNotEqual(env.dealer.hand, prev_dealer, "Incorrect Dealer Hand")
+        self.assertNotEqual(env.dummy.hand, prev_dummy, "Incorrect Dummy Hand")
+
+    def testRedealJoined(self):
+        env = BlackjackEnvwithCount(1)
+        env.step(2)
+        prev_dealer = env.dealer.hand.copy()
+        prev_dummy = env.dummy.hand.copy()
+        prev_player = env.player.hand.copy()
+        env.redeal()
+        self.assertNotEqual(env.dealer.hand, prev_dealer, "Incorrect Dealer Hand")
+        self.assertNotEqual(env.dummy.hand, prev_dummy, "Incorrect Dummy Hand")
+        self.assertNotEqual(env.player.hand, prev_player, "Incorrect Player Hand")
+
     def testObserve(self):
         env = BlackjackEnvwithCount(1)
         self.assertTrue(env.observing, "Default stating state is observing")
-        env.step(2)
-        self.assertFalse(env.observing, "Player should not be observing")
+        env.step(3)
+        self.assertTrue(env.observing, "Player should be observing")
 
     def testReshuffledTermination(self):
         env = BlackjackEnvwithCount(1)
@@ -63,6 +82,26 @@ class TestGameSimulator(unittest.TestCase):
         while not game_done:
             obs, _, game_done, _ = env.step(3)
         self.assertTrue(env.reshuffled)
+
+    def testReshuffledatRhoOne(self):
+        rho = 1
+        env = BlackjackEnvwithCount(1, rho=rho)
+        game_done = False
+        while not game_done:
+            obs, _, game_done, _ = env.step(3)
+        self.assertTrue(env.reshuffled)
+        expected = 52
+        self.assertEqual(env.blackjack_deck._get_cards_used(), expected)
+
+    def testReshuffledatRhoQuarter(self):
+        rho = 0.25
+        env = BlackjackEnvwithCount(2, rho=rho)
+        game_done = False
+        while not game_done:
+            obs, _, game_done, _ = env.step(3)
+        self.assertTrue(env.reshuffled)
+        expected = 26
+        self.assertEqual(env.blackjack_deck._get_cards_used(), expected)
 
     def testJoin(self):
         env = BlackjackEnvwithCount(1)

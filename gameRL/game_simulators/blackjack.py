@@ -11,6 +11,7 @@ import gym
 import numpy as np
 from gym import spaces
 from gym.utils import seeding
+import math
 
 SUITS = 4
 CARD_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10]
@@ -36,22 +37,28 @@ class BlackjackDeck:
 
 
 class BlackjackDeckwithCount(BlackjackDeck):
-    def __init__(self, N_decks: int, with_replacement=False):
+    def __init__(self, N_decks: int, with_replacement=False, rho=1):
         BlackjackDeck.__init__(self, N_decks, with_replacement)
         self.count = 0
+        self.rho = rho
+        self.reshuffle_point = math.floor(
+            len(CARD_VALUES) * SUITS * self.N_decks * (1 - self.rho)
+        )
+        self.cards_used = 0
+        self.reshuffled = False
 
     def draw_card(self) -> Tuple[int, bool]:
         """Draws and returns card from the deck"""
-        reshuffled = False
-        if len(self.deck) == 0:
-            self.deck = CARD_VALUES.copy() * SUITS * self.N_decks
-            self.count = 0
-            reshuffled = True
+        if self.reshuffled:
+            return None, self.reshuffled
+        if len(self.deck) - 1 <= self.reshuffle_point:
+            self.reshuffled = True
+        self.cards_used += 1
         index = np.random.randint(len(self.deck))
         self.count += self.update_count(self.deck[index])
         if self.with_replacement:
-            return self.deck[index], reshuffled
-        return self.deck.pop(index), reshuffled
+            return self.deck[index], self.reshuffled
+        return self.deck.pop(index), self.reshuffled
 
     def update_count(self, card, system="Hi-Lo") -> Tuple[int, float]:
         """
@@ -65,8 +72,19 @@ class BlackjackDeckwithCount(BlackjackDeck):
             else:
                 return -1
 
-    def get_count(self) -> Tuple[int, float]:
+    def get_running_count(self) -> Tuple[int, float]:
         return self.count
+
+    def _get_num_decks(self) -> int:
+        cards_per_deck = len(CARD_VALUES) * SUITS
+        num_decks = math.ceil(len(self.deck) / cards_per_deck)
+        return num_decks
+
+    def _get_cards_used(self) -> int:
+        return self.cards_used
+
+    def _get_full_deck_size(self) -> int:
+        return len(CARD_VALUES) * SUITS * self.N_decks
 
 
 class BlackjackHand:
@@ -79,6 +97,7 @@ class BlackjackHand:
         self.hand.append(self.blackjack_deck.draw_card())
 
     def _initial_draw(self):
+        self.hand = []
         for _ in range(2):
             self.draw_card()
 
@@ -203,7 +222,7 @@ class BlackjackCustomEnv(gym.Env):
 
 
 class BlackjackEnvwithCount(BlackjackCustomEnv):
-    def __init__(self, N_decks: int, natural_bonus: bool = True):
+    def __init__(self, N_decks: int, natural_bonus: bool = True, rho=1):
         BlackjackCustomEnv.__init__(self, N_decks, natural_bonus)
         # actions: either "hit" (keep playing), "stand" (stop where you are), observe or join
         self.action_space = spaces.Discrete(4)
@@ -221,7 +240,9 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
             )
         )
 
-        self.blackjack_deck: BlackjackDeck = BlackjackDeckwithCount(self.N_decks)
+        self.blackjack_deck: BlackjackDeck = BlackjackDeckwithCount(
+            self.N_decks, rho=rho
+        )
         self.observing = True
         self.reshuffled = False
 
@@ -312,7 +333,7 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
             hand_done, reward = self._dummy_stick()
 
         if hand_done:  # draw new cards
-            self.reset()  # draw dealer and dummy
+            self.redeal()
 
         if self.dealer.reshuffled or self.dummy.reshuffled:
             self.reshuffled = True
@@ -322,12 +343,20 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
         return self._get_obs(), reward, game_done, {}
 
     def _get_obs(self) -> Tuple[int, int, bool]:
+        if self.reshuffled:
+            return (
+                0,
+                1,
+                False,
+                self.blackjack_deck.get_running_count(),
+                self.observing,
+            )
         if self.observing:
             return (
                 0,
                 self.dealer.hand[0],
                 False,
-                self.blackjack_deck.get_count(),
+                self.blackjack_deck.get_running_count(),
                 self.observing,
             )
         else:
@@ -335,7 +364,7 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
                 self.player.sum_hand(),
                 self.dealer.hand[0],
                 self.player.has_usable_ace(),
-                self.blackjack_deck.get_count(),
+                self.blackjack_deck.get_running_count(),
                 self.observing,
             )
 
@@ -348,4 +377,20 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
             self.player = BlackjackHandwithReshuffle(self.blackjack_deck)
         else:
             self.player = None
+        return self._get_obs()
+
+    def redeal(self) -> Tuple[int, int, bool]:
+        self.dealer._initial_draw()
+        self.dummy._initial_draw()
+        self.reshuffled = (
+            self.reshuffled or self.dealer.reshuffled or self.dummy.reshuffled
+        )
+        if not self.observing:
+            if not self.player:
+                self.player = BlackjackHandwithReshuffle(self.blackjack_deck)
+            self.player._initial_draw()
+            self.reshuffled = self.reshuffled or self.player.reshuffled
+        else:
+            self.player = None
+
         return self._get_obs()
