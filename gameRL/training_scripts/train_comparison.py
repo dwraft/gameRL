@@ -12,7 +12,7 @@ from gameRL.training_scripts.utils import LargeEvalCallback
 
 if __name__ == "__main__":
     env = BlackjackEnvwithCount(3, natural_bonus=True)
-    TIMESTEPS_PER_MODEL = 7e5
+    TIMESTEPS_PER_MODEL = 700000
     RHO_TO_TRY = [0.25, 0.75, 0.95]
     DECKS_TO_TRY = [1, 3, 10]
     MAX_HAND_SUM_TO_TRY = [19, 21, 24]
