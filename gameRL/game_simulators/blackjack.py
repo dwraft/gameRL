@@ -14,7 +14,6 @@ from gym.utils import seeding
 
 SUITS = 4
 CARD_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10]
-MAX_HAND_SUM = 21
 DEALER_MAX = 17
 
 
@@ -36,7 +35,8 @@ class BlackjackDeck:
 
 
 class BlackjackHand:
-    def __init__(self, blackjack_deck: BlackjackDeck):
+    def __init__(self, blackjack_deck: BlackjackDeck, max_hand_sum: int = None):
+        self.max_hand_sum = max_hand_sum
         self.blackjack_deck: BlackjackDeck = blackjack_deck
         self.hand: List[int] = []
         self._initial_draw()
@@ -50,7 +50,7 @@ class BlackjackHand:
             self.draw_card()
 
     def has_usable_ace(self) -> bool:
-        return 1 in self.hand and sum(self.hand) + 10 <= MAX_HAND_SUM
+        return 1 in self.hand and sum(self.hand) + 10 <= self.max_hand_sum
 
     def sum_hand(self) -> int:
         if self.has_usable_ace():
@@ -58,7 +58,7 @@ class BlackjackHand:
         return sum(self.hand)
 
     def is_bust(self) -> bool:
-        return sum(self.hand) > MAX_HAND_SUM
+        return sum(self.hand) > self.max_hand_sum
 
     def score(self) -> int:
         return 0 if self.is_bust() else self.sum_hand()
@@ -75,8 +75,9 @@ class BlackjackHand:
 
 
 class BlackjackCustomEnv(gym.Env):
-    def __init__(self, N_decks: int, natural_bonus: bool = True):
+    def __init__(self, N_decks: int, natural_bonus: bool = True, max_hand_sum: int = 21):
         # actions: either "hit" (keep playing) or "stand" (stop where you are)
+        self.max_hand_sum = max_hand_sum
         self.action_space = spaces.Discrete(2)
 
         self.observation_space = spaces.MultiDiscrete([32, 11, 2])
@@ -151,9 +152,6 @@ class BlackjackCustomEnv(gym.Env):
 
     def reset(self) -> Tuple[int, int, bool]:
         self.blackjack_deck: BlackjackDeck = BlackjackDeck(self.N_decks)
-        self.dealer = BlackjackHand(self.blackjack_deck)
-        self.player = BlackjackHand(self.blackjack_deck)
+        self.dealer = BlackjackHand(self.blackjack_deck, self.max_hand_sum)
+        self.player = BlackjackHand(self.blackjack_deck, self.max_hand_sum)
         return self._get_obs()
-
-
-

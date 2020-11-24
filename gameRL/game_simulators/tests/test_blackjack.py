@@ -2,9 +2,8 @@ import unittest
 from gameRL.game_simulators.blackjack import (
     BlackjackDeck,
     BlackjackCustomEnv,
-    BlackjackDeckwithCount,
-    BlackjackEnvwithCount,
 )
+from gameRL.game_simulators.blackjack_count import BlackjackEnvwithCount, BlackjackDeckwithCount
 
 
 class TestGameSimulator(unittest.TestCase):

@@ -61,8 +61,8 @@ class BlackjackDeckwithCount(BlackjackDeck):
 
 
 class BlackjackHandwithReshuffle(BlackjackHand):
-    def __init__(self, blackjack_deck: BlackjackDeckwithCount):
-        BlackjackHand.__init__(self, blackjack_deck)
+    def __init__(self, blackjack_deck: BlackjackDeckwithCount, max_hand_sum: int = 21):
+        BlackjackHand.__init__(self, blackjack_deck, max_hand_sum)
         self.reshuffled = False
 
     def draw_card(self):
@@ -74,8 +74,8 @@ class BlackjackHandwithReshuffle(BlackjackHand):
 
 
 class BlackjackEnvwithCount(BlackjackCustomEnv):
-    def __init__(self, N_decks: int, natural_bonus: bool = True, rho=1):
-        BlackjackCustomEnv.__init__(self, N_decks, natural_bonus)
+    def __init__(self, N_decks: int, natural_bonus: bool = True, rho=1, max_hand_sum: int = 21):
+        BlackjackCustomEnv.__init__(self, N_decks, natural_bonus, max_hand_sum=max_hand_sum)
         # actions: either "hit" (keep playing), "stand" (stop where you are), observe or join
         self.action_space = spaces.Discrete(4)
         # count observation depends on the card-counting system and number of decks

@@ -133,3 +133,4 @@ dmypy.json
 # saved files
 **/runs
 **/saved_models
+**/archive
