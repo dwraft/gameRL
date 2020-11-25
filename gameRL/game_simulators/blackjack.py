@@ -86,7 +86,6 @@ class BlackjackDeckwithCount(BlackjackDeck):
     def _get_full_deck_size(self) -> int:
         return len(CARD_VALUES) * SUITS * self.N_decks
 
-
 class BlackjackHand:
     def __init__(self, blackjack_deck: BlackjackDeck):
         self.blackjack_deck: BlackjackDeck = blackjack_deck
@@ -125,6 +124,14 @@ class BlackjackHand:
     def __repr__(self) -> str:
         return f"Hand={self.hand}  Score={self.score()}"
 
+    @property
+    def hand_size(self) -> int:
+        return len(self.hand)
+
+    def is_double_down_legal(self) -> bool:
+        return self.hand_size == 2
+
+
 
 class BlackjackHandwithReshuffle(BlackjackHand):
     def __init__(self, blackjack_deck: BlackjackDeckwithCount):
@@ -142,7 +149,7 @@ class BlackjackHandwithReshuffle(BlackjackHand):
 class BlackjackCustomEnv(gym.Env):
     def __init__(self, N_decks: int, natural_bonus: bool = True):
         # actions: either "hit" (keep playing) or "stand" (stop where you are)
-        self.action_space = spaces.Discrete(2)
+        self.action_space = spaces.Discrete(3)
 
         self.observation_space = spaces.MultiDiscrete([32, 11, 2])
 
@@ -193,6 +200,23 @@ class BlackjackCustomEnv(gym.Env):
 
         return done, reward
 
+    def _double_down(self):
+        """
+        Handles case where the player chooses to double down
+        If the double down is illegeal, just ignore it
+        """
+        # it is illegal to double down if you do not have a 9, 10
+
+        multiplier = 2
+        if not self.player.is_double_down_legal():
+            return False, 0
+        done, reward = self._hit()
+        # case where you went over
+        if done:
+            return done, multiplier * reward
+        _, reward = self._stick()
+        return True, multiplier * reward
+
     def _get_info(self) -> Dict:
         """Return debugging info, for now just empty dictionary"""
         return {}
@@ -203,8 +227,10 @@ class BlackjackCustomEnv(gym.Env):
         # player hits
         if action == 1:
             done, reward = self._hit()
-        else:
+        elif action == 0:
             done, reward = self._stick()
+        else: # double down
+            done, reward = self._double_down()
         return self._get_obs(), reward, done, {}
 
     def _get_obs(self) -> Tuple[int, int, bool]:
@@ -225,7 +251,7 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
     def __init__(self, N_decks: int, natural_bonus: bool = True, rho=1):
         BlackjackCustomEnv.__init__(self, N_decks, natural_bonus)
         # actions: either "hit" (keep playing), "stand" (stop where you are), observe or join
-        self.action_space = spaces.Discrete(4)
+        self.action_space = spaces.Discrete(5)
         # count observation depends on the card-counting system and number of decks
         # use the following defaults
         # Hi-Lo: [-20 * N_decks, 20 * N_decks], (2*20 + 1) * N_decks
@@ -315,6 +341,27 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
 
         return hand_done, reward
 
+    def _double_down(self):
+        """
+        Handles case where the player chooses to double down
+        If the double down is illegeal, just ignore it
+        """
+        # it is illegal to double down if you do not have a 9, 10
+        hand_done = True
+        if self.observing:  # return early if player is observing
+            return hand_done, 0
+
+        multiplier = 2
+        if not self.player.is_double_down_legal():
+            return False, 0
+
+        done, reward = self._hit()
+        # case where you went over
+        if done:
+            return done, multiplier * reward
+        _, reward = self._stick()
+        return True, multiplier * reward
+
     def step(self, action) -> Tuple[Tuple, int, bool, dict]:
         """Action must be in the set {0,1,2,3}"""
         assert self.action_space.contains(action)
@@ -328,9 +375,11 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
             self.observing = False
             hand_done = True
             reward = 0
-        else:  # player observes
+        elif action == 3:  # player observes
             self.observing = True
             hand_done, reward = self._dummy_stick()
+        else: # player doubles down
+            hand_done, reward = self._double_down()
 
         if hand_done:  # draw new cards
             self.redeal()
