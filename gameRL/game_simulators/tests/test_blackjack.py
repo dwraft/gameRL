@@ -177,6 +177,10 @@ class TestGameSimulator(unittest.TestCase):
         self.assertNotEqual(env.dealer.hand, prev_dealer_hand)
         self.assertNotEqual(env.dummy.hand, prev_dummy_hand)
 
+    def testDoubleDown(self):
+        env = BlackjackEnvwithCount(1)
+        env.step(4)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
