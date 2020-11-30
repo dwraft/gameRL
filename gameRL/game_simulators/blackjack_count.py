@@ -77,7 +77,7 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
     def __init__(self, N_decks: int, natural_bonus: bool = True, rho=1, max_hand_sum: int = 21):
         BlackjackCustomEnv.__init__(self, N_decks, natural_bonus, max_hand_sum=max_hand_sum)
         # actions: either "hit" (keep playing), "stand" (stop where you are), observe or join
-        self.action_space = spaces.Discrete(4)
+        self.action_space = spaces.Discrete(5)
         # count observation depends on the card-counting system and number of decks
         # use the following defaults
         # Hi-Lo: [-20 * N_decks, 20 * N_decks], (2*20 + 1) * N_decks
@@ -160,6 +160,27 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
 
         return hand_done, reward
 
+    def _double_down(self):
+        """
+        Handles case where the player chooses to double down
+        If the double down is illegeal, just ignore it
+        """
+        # it is illegal to double down if you do not have a 9, 10
+        hand_done = True
+        if self.observing:  # return early if player is observing
+            return hand_done, 0
+
+        multiplier = 2
+        if not self.player.is_double_down_legal():
+            return False, 0
+
+        done, reward = self._hit()
+        # case where you went over
+        if done:
+            return done, multiplier * reward
+        _, reward = self._stick()
+        return True, multiplier * reward
+
     def step(self, action) -> Tuple[Tuple, int, bool, dict]:
         """Action must be in the set {0,1,2,3}"""
         assert self.action_space.contains(action)
@@ -173,9 +194,11 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
             self.observing = False
             hand_done = True
             reward = 0
-        else:  # player observes
+        elif action == 3:  # player observes:
             self.observing = True
             hand_done, reward = self._dummy_stick()
+        else:  # player doubles down
+            hand_done, reward = self._double_down()
 
         if hand_done:  # draw new cards
             self.redeal()

@@ -73,12 +73,19 @@ class BlackjackHand:
     def __repr__(self) -> str:
         return f"Hand={self.hand}  Score={self.score()}"
 
+    @property
+    def hand_size(self) -> int:
+        return len(self.hand)
+
+    def is_double_down_legal(self) -> bool:
+        return self.hand_size == 2
+
 
 class BlackjackCustomEnv(gym.Env):
     def __init__(self, N_decks: int, natural_bonus: bool = True, max_hand_sum: int = 21):
         # actions: either "hit" (keep playing) or "stand" (stop where you are)
         self.max_hand_sum = max_hand_sum
-        self.action_space = spaces.Discrete(2)
+        self.action_space = spaces.Discrete(3)
 
         self.observation_space = spaces.MultiDiscrete([32, 11, 2])
 
@@ -129,6 +136,23 @@ class BlackjackCustomEnv(gym.Env):
 
         return done, reward
 
+    def _double_down(self):
+        """
+        Handles case where the player chooses to double down
+        If the double down is illegeal, just ignore it
+        """
+        # it is illegal to double down if you do not have a 9, 10
+
+        multiplier = 2
+        if not self.player.is_double_down_legal():
+            return False, 0
+        done, reward = self._hit()
+        # case where you went over
+        if done:
+            return done, multiplier * reward
+        _, reward = self._stick()
+        return True, multiplier * reward
+
     def _get_info(self) -> Dict:
         """Return debugging info, for now just empty dictionary"""
         return {}
@@ -139,8 +163,10 @@ class BlackjackCustomEnv(gym.Env):
         # player hits
         if action == 1:
             done, reward = self._hit()
-        else:
+        elif action == 0:
             done, reward = self._stick()
+        else:  # double down
+            done, reward = self._double_down()
         return self._get_obs(), reward, done, {}
 
     def _get_obs(self) -> Tuple[int, int, bool]:
