@@ -3,12 +3,12 @@ from gameRL.game_simulators.blackjack import (
     BlackjackDeck,
     BlackjackCustomEnv,
 )
-from gameRL.game_simulators.blackjack_count import BlackjackEnvwithCount, BlackjackDeckwithCount
+from gameRL.game_simulators.blackjack_count import BlackjackEnvwithRunningCount, BlackjackDeckwithCount
 
 
 class TestGameSimulator(unittest.TestCase):
     def test_rand_game(self):
-        env = BlackjackEnvwithCount(3, natural_bonus=True)
+        env = BlackjackEnvwithRunningCount(3, natural_bonus=True)
         obs = env.reset()
         env.step(2)  # player joins game
         done = False
@@ -45,13 +45,13 @@ class TestGameSimulator(unittest.TestCase):
             self.assertEqual(actual, expected, "Multiple Deck Counting Failed")
 
     def testReset(self):
-        env = BlackjackEnvwithCount(1)
+        env = BlackjackEnvwithRunningCount(1)
         env.reset()
         self.assertEqual(len(env.dealer.hand), 2, "Incorrect Dealer Hand")
         self.assertEqual(len(env.dummy.hand), 2, "Incorrect Dummy Hand")
 
     def testRedealObserving(self):
-        env = BlackjackEnvwithCount(1)
+        env = BlackjackEnvwithRunningCount(1)
         prev_dealer = env.dealer.hand.copy()
         prev_dummy = env.dummy.hand.copy()
         env.redeal()
@@ -59,7 +59,7 @@ class TestGameSimulator(unittest.TestCase):
         self.assertNotEqual(env.dummy.hand, prev_dummy, "Incorrect Dummy Hand")
 
     def testRedealJoined(self):
-        env = BlackjackEnvwithCount(1)
+        env = BlackjackEnvwithRunningCount(1)
         env.step(2)
         prev_dealer = env.dealer.hand.copy()
         prev_dummy = env.dummy.hand.copy()
@@ -70,13 +70,13 @@ class TestGameSimulator(unittest.TestCase):
         self.assertNotEqual(env.player.hand, prev_player, "Incorrect Player Hand")
 
     def testObserve(self):
-        env = BlackjackEnvwithCount(1)
+        env = BlackjackEnvwithRunningCount(1)
         self.assertTrue(env.observing, "Default stating state is observing")
         env.step(3)
         self.assertTrue(env.observing, "Player should be observing")
 
     def testReshuffledTermination(self):
-        env = BlackjackEnvwithCount(1)
+        env = BlackjackEnvwithRunningCount(1)
         game_done = False
         while not game_done:
             obs, _, game_done, _ = env.step(3)
@@ -84,7 +84,7 @@ class TestGameSimulator(unittest.TestCase):
 
     def testReshuffledatRhoOne(self):
         rho = 1
-        env = BlackjackEnvwithCount(1, rho=rho)
+        env = BlackjackEnvwithRunningCount(1, rho=rho)
         game_done = False
         while not game_done:
             obs, _, game_done, _ = env.step(3)
@@ -94,7 +94,7 @@ class TestGameSimulator(unittest.TestCase):
 
     def testReshuffledatRhoQuarter(self):
         rho = 0.25
-        env = BlackjackEnvwithCount(2, rho=rho)
+        env = BlackjackEnvwithRunningCount(2, rho=rho)
         game_done = False
         while not game_done:
             obs, _, game_done, _ = env.step(3)
@@ -103,7 +103,7 @@ class TestGameSimulator(unittest.TestCase):
         self.assertEqual(env.blackjack_deck._get_cards_used(), expected)
 
     def testJoin(self):
-        env = BlackjackEnvwithCount(1)
+        env = BlackjackEnvwithRunningCount(1)
         env.step(3)  # Player stays observing
         prev_dealer = env.dealer.hand[:]
         prev_dummy = env.dummy.hand[:]
@@ -114,7 +114,7 @@ class TestGameSimulator(unittest.TestCase):
         self.assertEqual(len(env.player.hand), expected_hand_length)
 
     def testLeave(self):
-        env = BlackjackEnvwithCount(1)
+        env = BlackjackEnvwithRunningCount(1)
         env.step(2)  # Player joins
         expected_hand_length = 2
         prev_player_hand = env.player.hand[:]
@@ -129,7 +129,7 @@ class TestGameSimulator(unittest.TestCase):
         self.assertIsNone(env.player)
 
     def testJoinandHit(self):
-        env = BlackjackEnvwithCount(1)
+        env = BlackjackEnvwithRunningCount(1)
         env.step(2)  # Player joins
         expected_hand_length = 2
         prev_player_hand = env.player.hand[:]
@@ -144,7 +144,7 @@ class TestGameSimulator(unittest.TestCase):
         self.assertNotEqual(env.player.hand, prev_player_hand)
 
     def testJoinandStick(self):
-        env = BlackjackEnvwithCount(1)
+        env = BlackjackEnvwithRunningCount(1)
         env.step(2)  # Player joins
         expected_hand_length = 2
         prev_player_hand = env.player.hand[:]
@@ -159,7 +159,7 @@ class TestGameSimulator(unittest.TestCase):
         self.assertNotEqual(env.player.hand, prev_player_hand)
 
     def testObservingInvalidAction(self):
-        env = BlackjackEnvwithCount(1)
+        env = BlackjackEnvwithRunningCount(1)
         env.step(2)
         env.step(3)
         prev_dealer_hand = env.dealer.hand[:]
@@ -177,7 +177,7 @@ class TestGameSimulator(unittest.TestCase):
         self.assertNotEqual(env.dummy.hand, prev_dummy_hand)
 
     def testDoubleDown(self):
-        env = BlackjackEnvwithCount(1)
+        env = BlackjackEnvwithRunningCount(1)
         env.step(4)
 
 

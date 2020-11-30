@@ -8,7 +8,7 @@ import numpy as np
 from stable_baselines import ACER, A2C, PPO2, DQN, ACKTR
 from stable_baselines.common.evaluation import evaluate_policy
 
-from gameRL.game_simulators.blackjack_count import BlackjackEnvwithCount
+from gameRL.game_simulators.blackjack_count import BlackjackEnvwithRunningCount
 
 name_map = {"a2c": A2C,
             "acer": ACER,
@@ -46,8 +46,8 @@ def plot_winrates(directory, show_std=False):
         for match in matches:
             full_filename = f"{directory}/{param_file_map[tuple(match)]}"
             model = name_map[match[0]].load(full_filename)
-            env = BlackjackEnvwithCount(int(match[3]), natural_bonus=True, rho=float(match[2]),
-                                        max_hand_sum=int(match[1]))
+            env = BlackjackEnvwithRunningCount(int(match[3]), natural_bonus=True, rho=float(match[2]),
+                                               max_hand_sum=int(match[1]))
             mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=NUM_TO_RUN)
             names.append(match[0])
             winrates.append(mean_reward)

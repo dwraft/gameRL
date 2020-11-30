@@ -73,7 +73,7 @@ class BlackjackHandwithReshuffle(BlackjackHand):
             self.reshuffled = True
 
 
-class BlackjackEnvwithCount(BlackjackCustomEnv):
+class BlackjackEnvwithRunningCount(BlackjackCustomEnv):
     def __init__(self, N_decks: int, natural_bonus: bool = True, rho=1, max_hand_sum: int = 21):
         BlackjackCustomEnv.__init__(self, N_decks, natural_bonus, max_hand_sum=max_hand_sum)
         # actions: either "hit" (keep playing), "stand" (stop where you are), observe or join
@@ -266,3 +266,55 @@ class BlackjackEnvwithCount(BlackjackCustomEnv):
             self.player = None
 
         return self._get_obs()
+
+
+class BlackjackEnvwithTrueCount(BlackjackEnvwithRunningCount):
+    def __init__(self, N_decks: int, natural_bonus: bool = True, rho=1):
+        BlackjackEnvwithRunningCount.__init__(self, N_decks, natural_bonus, rho=rho)
+        # self.action_space = spaces.Discrete(4)
+        true_min, true_max = -20, 20
+        self.observation_space = spaces.Tuple(
+            (
+                spaces.Discrete(33),  # 32 + 1 for observing hand sum of 0
+                spaces.Discrete(11),
+                spaces.Discrete(2),
+                spaces.Box(
+                    np.array([true_min], dtype=np.float32),
+                    np.array([true_max], dtype=np.float32),
+                ),
+                spaces.Discrete(2),  # observing or not
+            )
+        )
+        # self.blackjack_deck: BlackjackDeck = BlackjackDeckwithCount(
+        #     self.N_decks, rho=rho
+        # )
+        # self.observing = True
+        # self.reshuffled = False
+
+        # self.reset()
+
+    def _get_obs(self) -> Tuple[int, int, bool]:
+        if self.reshuffled:
+            return (
+                0,
+                1,
+                False,
+                self.blackjack_deck.get_true_count(),
+                self.observing,
+            )
+        if self.observing:
+            return (
+                0,
+                self.dealer.hand[0],
+                False,
+                self.blackjack_deck.get_true_count(),
+                self.observing,
+            )
+        else:
+            return (
+                self.player.sum_hand(),
+                self.dealer.hand[0],
+                self.player.has_usable_ace(),
+                self.blackjack_deck.get_true_count(),
+                self.observing,
+            )
