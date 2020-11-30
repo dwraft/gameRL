@@ -74,10 +74,10 @@ class BlackjackHandwithReshuffle(BlackjackHand):
 
 
 class BlackjackEnvwithRunningCount(BlackjackCustomEnv):
-    def __init__(self, N_decks: int, natural_bonus: bool = True, rho=1, max_hand_sum: int = 21):
+    def __init__(self, N_decks: int, natural_bonus: bool = True, rho=1, max_hand_sum: int = 21, allow_observe : bool = True):
         BlackjackCustomEnv.__init__(self, N_decks, natural_bonus, max_hand_sum=max_hand_sum)
         # actions: either "hit" (keep playing), "stand" (stop where you are), observe or join
-        self.action_space = spaces.Discrete(5)
+        self.action_space = spaces.Discrete(5) if allow_observe else spaces.Discrete(3)
         # count observation depends on the card-counting system and number of decks
         # use the following defaults
         # Hi-Lo: [-20 * N_decks, 20 * N_decks], (2*20 + 1) * N_decks
@@ -90,6 +90,7 @@ class BlackjackEnvwithRunningCount(BlackjackCustomEnv):
         )
         self.observing = True
         self.reshuffled = False
+        self._allow_observe = allow_observe
 
         self.reset()
 
@@ -190,11 +191,11 @@ class BlackjackEnvwithRunningCount(BlackjackCustomEnv):
             hand_done, reward = self._hit()
         elif action == 0:  # player sticks
             hand_done, reward = self._stick()
-        elif action == 2:  # player joins
+        elif self._allow_observe and action == 2:  # player joins
             self.observing = False
             hand_done = True
             reward = 0
-        elif action == 3:  # player observes:
+        elif self._allow_observe and action == 3:  # player observes:
             self.observing = True
             hand_done, reward = self._dummy_stick()
         else:  # player doubles down
