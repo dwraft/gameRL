@@ -5,3 +5,4 @@ matplotlib
 black
 tensorflow-gpu==1.14
 stable-baselines[mpi]
+tensorboard
