@@ -20,7 +20,7 @@ name_map = {"a2c": A2C,
 NUM_TO_RUN = 5000
 
 
-def plot_winrates(directory):
+def plot_winrates(directory, show_std=False):
     files = [f for f in listdir(directory) if isfile(join(directory, f))]
     #files = filter(lambda x: x[-4] == ".zip", files)
 
@@ -54,7 +54,7 @@ def plot_winrates(directory):
 
         names_pos = [i for i, _ in enumerate(names)]
 
-        axs[i].bar(names_pos, winrates, yerr=stds)
+        axs[i].bar(names_pos, winrates, yerr=stds if show_std else None)
         axs[i].set_xticks(names_pos)
         axs[i].set_xticklabels(names)
         axs[i].set_ylabel("Mean reward")
