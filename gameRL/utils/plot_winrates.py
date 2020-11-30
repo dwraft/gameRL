@@ -39,6 +39,7 @@ def plot_winrates(directory, show_std=False):
         match_hits = params[:, 1:] == combo
         match_hits = np.all(match_hits, axis=1)
         matches = params[match_hits, :]
+        matches = sorted(list(matches), key=lambda x: x[0])
         names = []
         winrates = []
         stds = []
