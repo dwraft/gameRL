@@ -82,10 +82,13 @@ class BlackjackHand:
 
 
 class BlackjackCustomEnv(gym.Env):
-    def __init__(self, N_decks: int, natural_bonus: bool = True, max_hand_sum: int = 21):
+    def __init__(self, N_decks: int, natural_bonus: bool = True, max_hand_sum: int = 21,
+                 simple_game: bool = False):
         # actions: either "hit" (keep playing) or "stand" (stop where you are)
         self.max_hand_sum = max_hand_sum
-        self.action_space = spaces.Discrete(3)
+
+        self._simple_game = simple_game
+        self.action_space = spaces.Discrete(2 if simple_game else 3)
 
         self.observation_space = spaces.MultiDiscrete([32, 11, 2])
 
@@ -165,8 +168,10 @@ class BlackjackCustomEnv(gym.Env):
             done, reward = self._hit()
         elif action == 0:
             done, reward = self._stick()
-        else:  # double down
+        elif action == 2 and not self._simple_game:  # double down
             done, reward = self._double_down()
+        else:
+            raise ValueError("Illegal action")
         return self._get_obs(), reward, done, {}
 
     def _get_obs(self) -> Tuple[int, int, bool]:
