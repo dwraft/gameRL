@@ -29,10 +29,11 @@ def train_multi(params):
 
         descriptor = f"{name}/sum_{max_hand_sum}/rho_{rho}_nd_{num_decks}"
         log = f"./runs/{descriptor}"
-        # env = BlackjackEnvwithRunningCount(num_decks, natural_bonus=True, rho=rho,
-        #                                    max_hand_sum=max_hand_sum, allow_observe=False)
-        env = BlackjackCustomEnv(num_decks, natural_bonus=True, rho=rho,
-                                           max_hand_sum=max_hand_sum, simple_game=True)
+        env = BlackjackEnvwithRunningCount(num_decks, natural_bonus=True, rho=rho,
+                                           max_hand_sum=max_hand_sum, allow_observe=True)
+        # env = BlackjackCustomEnv(num_decks, natural_bonus=True, rho=rho,
+        #                                    max_hand_sum=max_hand_sum, simple_game=True)
+
         model = model_gen(env, log)
 
         model.learn(total_timesteps=params["TIMESTEPS_PER_MODEL"], callback=eval_callback)
@@ -48,33 +49,11 @@ def train_multi(params):
 
 
 if __name__ == "__main__":
-    # params = {
-    #     "TIMESTEPS_PER_MODEL": int(7e5),
-    #     "RHO_TO_TRY": [0.25, 0.75, 0.95],
-    #     "DECKS_TO_TRY": [1, 3, 10],
-    #     "MAX_HAND_SUM_TO_TRY": [19, 21, 24],
-    #     # for each model, name of mode, model
-    #     "models_to_train": [
-    #         (
-    #             "dqn",
-    #             lambda use_env, log_name: DQN(stable_baselines.deepq.policies.MlpPolicy, use_env,
-    #                                           tensorboard_log=log_name)),
-    #         ("a2c", lambda use_env, log_name: A2C(MlpPolicy, use_env, tensorboard_log=log_name)),
-    #         ("acer", lambda use_env, log_name: ACER(MlpPolicy, use_env,
-    #         tensorboard_log=log_name)),
-    #         (
-    #             "acktr",
-    #             lambda use_env, log_name: ACKTR(MlpPolicy, use_env, tensorboard_log=log_name)),
-    #         ("ppo2", lambda use_env, log_name: PPO2(MlpPolicy, use_env,
-    #         tensorboard_log=log_name)),
-    #     ],
-    # }
     params = {
         "TIMESTEPS_PER_MODEL": int(7e5),
-        "RHO_TO_TRY": [0.95],
-        "DECKS_TO_TRY": [3],
-        "MAX_HAND_SUM_TO_TRY": [21],
-        "reduce_runs": False,
+        "RHO_TO_TRY": [0.25, 0.75, 0.95],
+        "DECKS_TO_TRY": [1, 3, 10],
+        "MAX_HAND_SUM_TO_TRY": [19, 21, 24],
         # for each model, name of mode, model
         "models_to_train": [
             (
@@ -82,11 +61,33 @@ if __name__ == "__main__":
                 lambda use_env, log_name: DQN(stable_baselines.deepq.policies.MlpPolicy, use_env,
                                               tensorboard_log=log_name)),
             ("a2c", lambda use_env, log_name: A2C(MlpPolicy, use_env, tensorboard_log=log_name)),
-            ("acer", lambda use_env, log_name: ACER(MlpPolicy, use_env, tensorboard_log=log_name)),
+            ("acer", lambda use_env, log_name: ACER(MlpPolicy, use_env,
+            tensorboard_log=log_name)),
             (
                 "acktr",
                 lambda use_env, log_name: ACKTR(MlpPolicy, use_env, tensorboard_log=log_name)),
-            ("ppo2", lambda use_env, log_name: PPO2(MlpPolicy, use_env, tensorboard_log=log_name)),
+            ("ppo2", lambda use_env, log_name: PPO2(MlpPolicy, use_env,
+            tensorboard_log=log_name)),
         ],
     }
+    # params = {
+    #     "TIMESTEPS_PER_MODEL": int(7e5),
+    #     "RHO_TO_TRY": [0.95],
+    #     "DECKS_TO_TRY": [3],
+    #     "MAX_HAND_SUM_TO_TRY": [21],
+    #     "reduce_runs": False,
+    #     # for each model, name of mode, model
+    #     "models_to_train": [
+    #         (
+    #             "dqn",
+    #             lambda use_env, log_name: DQN(stable_baselines.deepq.policies.MlpPolicy, use_env,
+    #                                           tensorboard_log=log_name)),
+    #         ("a2c", lambda use_env, log_name: A2C(MlpPolicy, use_env, tensorboard_log=log_name)),
+    #         ("acer", lambda use_env, log_name: ACER(MlpPolicy, use_env, tensorboard_log=log_name)),
+    #         (
+    #             "acktr",
+    #             lambda use_env, log_name: ACKTR(MlpPolicy, use_env, tensorboard_log=log_name)),
+    #         ("ppo2", lambda use_env, log_name: PPO2(MlpPolicy, use_env, tensorboard_log=log_name)),
+    #     ],
+    # }
     train_multi(params)
