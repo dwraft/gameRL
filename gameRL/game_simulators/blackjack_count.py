@@ -74,10 +74,10 @@ class BlackjackHandwithReshuffle(BlackjackHand):
 
 
 class BlackjackEnvwithRunningCount(BlackjackCustomEnv):
-    def __init__(self, N_decks: int, natural_bonus: bool = True, rho=1, max_hand_sum: int = 21):
+    def __init__(self, N_decks: int, natural_bonus: bool = True, rho=1, max_hand_sum: int = 21, allow_observe : bool = True):
         BlackjackCustomEnv.__init__(self, N_decks, natural_bonus, max_hand_sum=max_hand_sum)
         # actions: either "hit" (keep playing), "stand" (stop where you are), observe or join
-        self.action_space = spaces.Discrete(5)
+        self.action_space = spaces.Discrete(5) if allow_observe else spaces.Discrete(3)
         # count observation depends on the card-counting system and number of decks
         # use the following defaults
         # Hi-Lo: [-20 * N_decks, 20 * N_decks], (2*20 + 1) * N_decks
@@ -85,11 +85,15 @@ class BlackjackEnvwithRunningCount(BlackjackCustomEnv):
         self.observation_space = spaces.MultiDiscrete(
             [33, 11, 2, count_space, 2])  # last for observing or not
 
-        self.blackjack_deck: BlackjackDeck = BlackjackDeckwithCount(
-            self.N_decks, rho=rho
-        )
-        self.observing = True
-        self.reshuffled = False
+        self.rho = rho
+        self._allow_observe = allow_observe
+
+        # for game objects don't assign value until reset
+        self.observing = None
+        self.dealer = None
+        self.dummy = None
+        self.blackjack_deck = None
+        self.reshuffled = None
 
         self.reset()
 
@@ -190,11 +194,11 @@ class BlackjackEnvwithRunningCount(BlackjackCustomEnv):
             hand_done, reward = self._hit()
         elif action == 0:  # player sticks
             hand_done, reward = self._stick()
-        elif action == 2:  # player joins
+        elif self._allow_observe and action == 2:  # player joins
             self.observing = False
             hand_done = True
             reward = 0
-        elif action == 3:  # player observes:
+        elif self._allow_observe and action == 3:  # player observes:
             self.observing = True
             hand_done, reward = self._dummy_stick()
         else:  # player doubles down
@@ -243,8 +247,12 @@ class BlackjackEnvwithRunningCount(BlackjackCustomEnv):
     def reset(self) -> Tuple[int, int, bool]:
         if not hasattr(self, "blackjack_deck"):
             return None
+
+        self.observing = self._allow_observe
+        self.blackjack_deck = BlackjackDeckwithCount(self.N_decks, rho=self.rho)
         self.dealer = BlackjackHandwithReshuffle(self.blackjack_deck)
         self.dummy = BlackjackHandwithReshuffle(self.blackjack_deck)
+        self.reshuffled = False
         if not self.observing:
             self.player = BlackjackHandwithReshuffle(self.blackjack_deck)
         else:
