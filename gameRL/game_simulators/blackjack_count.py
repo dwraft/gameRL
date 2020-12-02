@@ -88,7 +88,7 @@ class BlackjackEnvwithRunningCount(BlackjackCustomEnv):
         self.blackjack_deck: BlackjackDeck = BlackjackDeckwithCount(
             self.N_decks, rho=rho
         )
-        self.observing = True
+        self.observing = allow_observe
         self.reshuffled = False
         self._allow_observe = allow_observe
 
