@@ -85,12 +85,15 @@ class BlackjackEnvwithRunningCount(BlackjackCustomEnv):
         self.observation_space = spaces.MultiDiscrete(
             [33, 11, 2, count_space, 2])  # last for observing or not
 
-        self.blackjack_deck: BlackjackDeck = BlackjackDeckwithCount(
-            self.N_decks, rho=rho
-        )
-        self.observing = allow_observe
-        self.reshuffled = False
+        self.rho = rho
         self._allow_observe = allow_observe
+
+        # for game objects don't assign value until reset
+        self.observing = None
+        self.dealer = None
+        self.dummy = None
+        self.blackjack_deck = None
+        self.reshuffled = None
 
         self.reset()
 
@@ -244,8 +247,12 @@ class BlackjackEnvwithRunningCount(BlackjackCustomEnv):
     def reset(self) -> Tuple[int, int, bool]:
         if not hasattr(self, "blackjack_deck"):
             return None
+
+        self.observing = self._allow_observe
+        self.blackjack_deck = BlackjackDeckwithCount(self.N_decks, rho=self.rho)
         self.dealer = BlackjackHandwithReshuffle(self.blackjack_deck)
         self.dummy = BlackjackHandwithReshuffle(self.blackjack_deck)
+        self.reshuffled = False
         if not self.observing:
             self.player = BlackjackHandwithReshuffle(self.blackjack_deck)
         else:

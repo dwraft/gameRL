@@ -180,6 +180,23 @@ class TestGameSimulator(unittest.TestCase):
         env = BlackjackEnvwithRunningCount(1)
         env.step(4)
 
+    def test_reset_env(self):
+        env = BlackjackEnvwithRunningCount(3, natural_bonus=True)
+        obs = env.reset()
+        env.step(2)  # player joins game
+        done = False
+        for _ in range(2000):
+            while not done:
+                action = 0
+                obs, rewards, done, info = env.step(action)
+            done = False
+            env.reset()
+            dealer_hand = env.dealer.hand
+            expected = 2
+            dummy_hand = env.dummy.hand
+            self.assertEqual(len(dealer_hand), expected)
+            self.assertEqual(len(dummy_hand), expected)
+            # env.render()
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
