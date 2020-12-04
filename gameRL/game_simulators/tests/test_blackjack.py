@@ -198,5 +198,19 @@ class TestGameSimulator(unittest.TestCase):
             self.assertEqual(len(dummy_hand), expected)
             # env.render()
 
+    def test_game_terminates_observe(self):
+        env = BlackjackEnvwithRunningCount(3, natural_bonus=True)
+        for action in range(5):
+            any_done = False
+            obs = env.reset()
+            for initial_act in range(5):
+                for _ in range(10):
+                    obs, rewards, done, info = env.step(initial_act)  # continue observing
+                    any_done = done or any_done
+                    for _ in range(1000):
+                        obs, rewards, done, info= env.step(action) # continue observing
+                        any_done = done or any_done
+                    self.assertTrue(any_done)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

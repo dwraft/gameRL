@@ -167,23 +167,15 @@ class BlackjackEnvwithRunningCount(BlackjackCustomEnv):
     def _double_down(self):
         """
         Handles case where the player chooses to double down
-        If the double down is illegeal, just ignore it
+        If the double down is illegal, just ignore it
         """
         # it is illegal to double down if you do not have a 9, 10
         hand_done = True
         if self.observing:  # return early if player is observing
             return hand_done, 0
 
-        multiplier = 2
-        if not self.player.is_double_down_legal():
-            return False, 0
-
-        done, reward = self._hit()
-        # case where you went over
-        if done:
-            return done, multiplier * reward
-        _, reward = self._stick()
-        return True, multiplier * reward
+        # otherwise behavior same as super
+        return super()._double_down()
 
     def step(self, action) -> Tuple[Tuple, int, bool, dict]:
         """Action must be in the set {0,1,2,3}"""

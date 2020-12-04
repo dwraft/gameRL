@@ -142,13 +142,14 @@ class BlackjackCustomEnv(gym.Env):
     def _double_down(self):
         """
         Handles case where the player chooses to double down
-        If the double down is illegeal, just ignore it
+        If the double down is illegal, act as if the player tried to hit.
         """
         # it is illegal to double down if you do not have a 9, 10
 
         multiplier = 2
         if not self.player.is_double_down_legal():
-            return False, 0
+            return self._hit()
+
         done, reward = self._hit()
         # case where you went over
         if done:
