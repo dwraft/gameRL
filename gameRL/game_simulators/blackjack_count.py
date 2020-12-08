@@ -188,8 +188,7 @@ class BlackjackEnvwithRunningCount(BlackjackCustomEnv):
             hand_done, reward = self._stick()
         elif self._allow_observe and action == 2:  # player joins
             self.observing = False
-            hand_done = True
-            reward = 0
+            hand_done, reward = self._dummy_stick()
         elif self._allow_observe and action == 3:  # player observes:
             self.observing = True
             hand_done, reward = self._dummy_stick()
