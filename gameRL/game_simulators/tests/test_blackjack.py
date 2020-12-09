@@ -3,7 +3,10 @@ from gameRL.game_simulators.blackjack import (
     BlackjackDeck,
     BlackjackCustomEnv,
 )
-from gameRL.game_simulators.blackjack_count import BlackjackEnvwithRunningCount, BlackjackDeckwithCount
+from gameRL.game_simulators.blackjack_count import (
+    BlackjackEnvwithRunningCount,
+    BlackjackDeckwithCount,
+)
 
 
 class TestGameSimulator(unittest.TestCase):
@@ -16,6 +19,15 @@ class TestGameSimulator(unittest.TestCase):
             action = 0
             obs, rewards, done, info = env.step(action)
             # env.render()
+
+    def test_join_hack(self):
+        env = BlackjackEnvwithRunningCount(3, natural_bonus=True)
+        obs = env.reset()
+        env.step(2)  # player joins game
+        done = False
+        while not done:
+            action = 2
+            obs, rewards, done, info = env.step(action)
 
     def testBlackjackDeckCountingHiLo(self):
         deck1 = BlackjackDeckwithCount(N_decks=1)
@@ -205,12 +217,17 @@ class TestGameSimulator(unittest.TestCase):
             obs = env.reset()
             for initial_act in range(5):
                 for _ in range(10):
-                    obs, rewards, done, info = env.step(initial_act)  # continue observing
+                    obs, rewards, done, info = env.step(
+                        initial_act
+                    )  # continue observing
                     any_done = done or any_done
                     for _ in range(1000):
-                        obs, rewards, done, info= env.step(action) # continue observing
+                        obs, rewards, done, info = env.step(
+                            action
+                        )  # continue observing
                         any_done = done or any_done
                     self.assertTrue(any_done)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
